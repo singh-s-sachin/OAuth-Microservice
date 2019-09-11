@@ -8,6 +8,7 @@ import json
 import sqlite3
 import datetime
 from functools import wraps
+from app import getuser,getusers,create_user,delete_user,sub_login
 app=Flask(__name__)
 #db=SQLAlchemy(app)
 app.config["SECRET_KEY"]="ionixxtechnologiesprivatekey@sachinandram"
@@ -26,6 +27,8 @@ def apps(name,password):
     secret_key=str(uuid.uuid1())
     credentials={"_id":pid,"secret-key":secret_key,"app-name":name,"password":str(pwd.hexdigest()),"admin":False}
     pid=db.users.insert(credentials)
+    app_admin={"_id":pid,"name":name,"password":str(pwd.hexdigest()),"admin":True}
+    pid=db[name].insert(app_admin)
     return pid
 
 def token_required(f):
@@ -54,7 +57,7 @@ def token_required(f):
         
 @app.route('/app',methods=['GET'])
 @token_required
-def getusers(current_user):
+def getapps(current_user):
     if not current_user['admin']:
         return jsonify({"message":"access-denied"})
     try:
@@ -71,7 +74,7 @@ def getusers(current_user):
 
 @app.route('/app/<app_name>',methods=['GET'])
 @token_required
-def getuser(current_user,app_name):
+def getapp(current_user,app_name):
     if not current_user['admin']:
         return jsonify({"message":"access-denied"})
     try:
@@ -108,7 +111,8 @@ def delete_app(current_user,app_name):
         db=client.Auth
     except:
         return jsonify({"message":"Database denied connection","error":401})
-    db.users.delete_one({"name":app_name})    
+    db.users.delete_one({"app-name":app_name})    
+    db[app_name].drop()
     return jsonify({"message":"user deleted","status":1})
 
 @app.route('/login')
@@ -133,6 +137,52 @@ def login():
             return make_response('Could not verify',401,{'WWW-Authenticate':'Basic realm="Login required"'})
     else:
         return make_response('Could not verify',401,{'WWW-Authenticate':'Basic realm="Login required"'})
-
+@app.route('/<app_name>/register',methods=['POST'])
+@token_required
+def make_user(current_user,app_name):
+    if current_user['admin']:
+        return jsonify({"message":"access-denied"})
+    if current_user['app-name']!=app_name:
+        return jsonify({"message":"access-denied"})
+    data=request.get_json()
+    new_user=create_user(app_name,data['name'],data['password'])
+    if new_user != False:
+        return jsonify({"message":"User created","id":new_user})
+    else:
+        return jsonify({"message":"Database denied connection/User already exists","Error":"401"})
+@app.route('/<app_name>/users',methods=['GET'])
+@token_required
+def get(current_user,app_name):
+    if current_user['admin']:
+        return jsonify({"message":"access-denied"})
+    if current_user['app-name']!=app_name:
+        return jsonify({"message":"access-denied"})
+    res=getusers(app_name)
+    if res==False:
+        return jsonify({"message":"Database denied connection","error":401})
+    return res
+@app.route('/<app_name>/users/<user_name>',methods=['GET'])
+@token_required
+def gets(current_user,app_name,user_name):
+    if current_user['admin']:
+        return jsonify({"message":"access-denied"})
+    if current_user['app-name']!=app_name:
+        return jsonify({"message":"access-denied"})
+    res=getuser(app_name,user_name)
+    if res==False:
+        return jsonify({"message":"User dosent exists","error":401})
+    return res
+@app.route('/<app_name>/login',methods=['GET'])
+@token_required
+def user_login(current_user,app_name):
+    if current_user['admin']:
+        return jsonify({"message":"access-denied"})
+    if current_user['app-name']!=app_name:
+        return jsonify({"message":"access-denied"})
+    data=request.get_json()
+    if not data['username'] and not data['password']:
+        return jsonify({"message":"Credential needed","error":404})
+    k=sub_login(app_name,data['username'],data['password'])
+    return k
 if __name__ == "__main__":
     app.run(debug=True)
