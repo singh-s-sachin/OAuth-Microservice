@@ -9,14 +9,6 @@ import datetime
 from functools import wraps
 app=Flask(__name__)
 app.config["SECRET_KEY"]="ionixxtechnologiesprivatekey@sachinandram"
-def users(name,password):
-    try:
-        client = MongoClient("localhost",27017)
-        db=client.Auth
-    except:
-        return False
-    
-
 
 def getuser(app_name,user_name):
     try:
@@ -62,12 +54,6 @@ def create_user(app_name,name,password):
     credentials={"_id":pid,"name":name,"password":str(pwd.hexdigest()),"admin":False}
     pid=db[app_name].insert(credentials)
     return pid
-    
-
-
-def delete_user(current_user,app_name):
-    return ' '
-    
 
 def sub_login(app_name,username,password): 
     try:
@@ -90,7 +76,5 @@ def sub_login(app_name,username,password):
             return make_response('Could not verify',401,{'WWW-Authenticate':'Basic realm="Login required"'})
     else:
         return make_response('Could not verify',401,{'WWW-Authenticate':'Basic realm="Login required"'})
-    
-
 if __name__ == "__main__":
     app.run(debug=True)
