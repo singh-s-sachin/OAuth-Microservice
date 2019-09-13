@@ -17,7 +17,6 @@ def register():
     reason=data["reason"]
     id=hashlib.sha256(name.encode())
     token=uuid.uuid4()
-    print(len(str(token)),len(str(id)))
     try:
         command='insert into developer(name,reason,id,token)values("'+str(name)+'","'+str(reason)+'","'+str(id.hexdigest())+'","'+str(token)+'")'
         cursor.execute(command)
@@ -30,7 +29,7 @@ def register():
     cursor.close()
     cursor.close()
     return jsonify({"message":"token generated","token":token})
-@app.route('/app',methods=['POST'])
+@app.route('/app',methods=['POST','GET'])
 def use():
     db=mysql.connector.connect(host='localhost',database='Ionixx',user='root',password='root')
     cursor = db.cursor()
