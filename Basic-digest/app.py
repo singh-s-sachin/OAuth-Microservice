@@ -2,9 +2,8 @@ from flask import Flask,request,jsonify, make_response
 import jwt
 import hashlib
 import uuid
-from pymongo import MongoClient
 import json
-import sqlite3
+import pymongo
 import datetime
 from functools import wraps
 app=Flask(__name__)
@@ -22,8 +21,6 @@ def getuser(app_name,user_name):
     i=k[0]
     k={"name":i["name"],"user_id":i["_id"]}
     return jsonify(k)
-    
-
 def getusers(app_name):
     try:
         client = MongoClient("localhost",27017)

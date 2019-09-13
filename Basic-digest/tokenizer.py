@@ -5,7 +5,6 @@ import hashlib
 import uuid
 from pymongo import MongoClient
 import json
-import sqlite3
 import datetime
 from functools import wraps
 from app import getuser,getusers,create_user,delete_user,sub_login
