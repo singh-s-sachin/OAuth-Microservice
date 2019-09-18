@@ -3,18 +3,17 @@ import hashlib
 import uuid
 import jwt
 from pymongo import MongoClient
+import mysql.connector
 import json
 import datetime
 from functools import wraps
 from app import getuser,getusers,create_user,sub_login
 app=Flask(__name__)
-#db=SQLAlchemy(app)
 app.config["SECRET_KEY"]="ionixxtechnologiesprivatekey@sachinandram"
-#app.config['SQLALCHEMY_DATABASE_URI']="sqlite:////mnt/c/Users/antho/Documents/api/userhub.db"
 def apps(name,password):
     try:
-        client = MongoClient("localhost",27017)
-        db=client.Auth
+        db=mysql.connector.connect(host='localhost',database='Auth',user='root',password='root')
+        cursor = db.cursor()
     except:
         return False
     if db.users.find({"app-name":name}).count() != 0:
@@ -42,8 +41,8 @@ def token_required(f):
         except:
             return jsonify({"message":"Invalid token"})
         try:
-            client = MongoClient("localhost",27017)
-            db=client.Auth
+            db=mysql.connector.connect(host='localhost',database='Auth',user='root',password='root')
+            cursor = db.cursor()
         except:
             return jsonify({"message":"Database denied connection","error":401})
         k=db.users.find({"app-name":data['id']})
@@ -52,15 +51,14 @@ def token_required(f):
         current_user=k[0]
         return f(current_user,*args,**kwargs)
     return decorated
-        
 @app.route('/app',methods=['GET'])
 @token_required
 def getapps(current_user):
     if not current_user['admin']:
         return jsonify({"message":"access-denied"})
     try:
-        client = MongoClient("localhost",27017)
-        db=client.Auth
+        db=mysql.connector.connect(host='localhost',database='Auth',user='root',password='root')
+        cursor = db.cursor()
     except:
         return jsonify({"message":"Database denied connection","error":401})
     k=db.users.find()
@@ -69,15 +67,14 @@ def getapps(current_user):
         dic={"name":i["app-name"],"client_id":i["_id"],"secret_key":i["secret-key"]}
         l.append(dic)
     return json.dumps(l)
-
 @app.route('/app/<app_name>',methods=['GET'])
 @token_required
 def getapp(current_user,app_name):
     if not current_user['admin']:
         return jsonify({"message":"access-denied"})
     try:
-        client = MongoClient("localhost",27017)
-        db=client.Auth
+        db=mysql.connector.connect(host='localhost',database='Auth',user='root',password='root')
+        cursor = db.cursor()
     except:
         return jsonify({"message":"Database denied connection","error":401})
     k=db.users.find({"app-name":app_name})
@@ -86,7 +83,6 @@ def getapp(current_user,app_name):
         return jsonify({"name":k["app-name"],"client_id":k["_id"],"secret_key":k["secret-key"]})
     else:
         return jsonify({"message":"User dosent exists"})
-
 @app.route('/app',methods=['POST'])
 @token_required
 def create_app(current_user):
@@ -98,29 +94,27 @@ def create_app(current_user):
         return jsonify({"message":"User created","id":new_user})
     else:
         return jsonify({"message":"Database denied connection/User already exists","Error":"401"})
-
 @app.route('/app/<app_name>',methods=['DELETE'])
 @token_required
 def delete_app(current_user,app_name):
     if not current_user['admin']:
         return jsonify({"message":"access-denied"})
     try:
-        client = MongoClient("localhost",27017)
-        db=client.Auth
+        db=mysql.connector.connect(host='localhost',database='Auth',user='root',password='root')
+        cursor = db.cursor()
     except:
         return jsonify({"message":"Database denied connection","error":401})
     db.users.delete_one({"app-name":app_name})    
     db[app_name].drop()
     return jsonify({"message":"user deleted","status":1})
-
 @app.route('/login')
-def login(): 
+def login():
     auth=request.authorization
     if not auth or not auth.username or not auth.password:
         return make_response('Could not verify',401,{'WWW-Authenticate':'Basic realm="Login required"'})
     try:
-        client = MongoClient("localhost",27017)
-        db=client.Auth
+        db=mysql.connector.connect(host='localhost',database='Auth',user='root',password='root')
+        cursor = db.cursor()
     except:
         return jsonify({"message":"Database denied connection","error":401})
     k=db.users.find({"app-name":auth.username})
