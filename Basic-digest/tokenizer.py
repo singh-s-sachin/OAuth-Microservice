@@ -28,7 +28,6 @@ def apps(name,password):
     app_admin={"_id":pid,"name":name,"password":str(pwd.hexdigest()),"admin":True}
     pid=db[name].insert(app_admin)
     return pid
-
 def token_required(f):
     @wraps(f)
     def decorated(*args,**kwargs):

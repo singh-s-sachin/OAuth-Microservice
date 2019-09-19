@@ -16,18 +16,24 @@ def apps(name,password):
         cursor = db.cursor()
     except:
         return False
-    if db.users.find({"app-name":name}).count() != 0:
+    command='select app_name from users where app_name='+'"'+name+'"'
+    cursor.execute(command)
+    temp=cursor.fetchall()
+    if len(temp) != 0:
         return False
     temp=password+str(app.config['SECRET_KEY'])
     pwd=hashlib.sha256(temp.encode())
     pid=str(uuid.uuid4())
     secret_key=str(uuid.uuid1())
-    credentials={"_id":pid,"secret-key":secret_key,"app-name":name,"password":str(pwd.hexdigest()),"admin":False}
-    pid=db.users.insert(credentials)
-    app_admin={"_id":pid,"name":name,"password":str(pwd.hexdigest()),"admin":True}
-    pid=db[name].insert(app_admin)
+    cursor.execute('insert into users(_id,secret_key,app_name,password,admin)values("{0}","{1}","{2}","{3}",False)'.format(pid,secret_key,name,str(pwd.hexdigest())))
+    cursor.execute("create database {0}".format(name))
+    cursor.execute("use {0}".format(name))
+    cursor.execute("create table users(_id varchar(256) primary key,secret_key varchar(256),name varchar(36),password varchar(259),admin varchar(5))")
+    cursor.execute('insert into users(_id,name,password,admin)value("{0}","{1}","{2}",True)'.format(pid,name,str(pwd.hexdigest())))
+    db.commit()
+    cursor.close()
+    cursor.close()
     return pid
-
 def token_required(f):
     @wraps(f)
     def decorated(*args,**kwargs):
@@ -45,7 +51,7 @@ def token_required(f):
             cursor = db.cursor()
         except:
             return jsonify({"message":"Database denied connection","error":401})
-        k=db.users.find({"app-name":data['id']})
+        k=db.users.find({"app_name":data['id']})
         if k.count()==0:
             return jsonify({"message":"User dosent exists","status":0})
         current_user=k[0]
@@ -64,7 +70,7 @@ def getapps(current_user):
     k=db.users.find()
     l=[]
     for i in k:
-        dic={"name":i["app-name"],"client_id":i["_id"],"secret_key":i["secret-key"]}
+        dic={"name":i["app_name"],"client_id":i["_id"],"secret_key":i["secret_key"]}
         l.append(dic)
     return json.dumps(l)
 @app.route('/app/<app_name>',methods=['GET'])
@@ -77,17 +83,14 @@ def getapp(current_user,app_name):
         cursor = db.cursor()
     except:
         return jsonify({"message":"Database denied connection","error":401})
-    k=db.users.find({"app-name":app_name})
+    k=db.users.find({"app_name":app_name})
     if k.count()==1:
         k=k[0]
-        return jsonify({"name":k["app-name"],"client_id":k["_id"],"secret_key":k["secret-key"]})
+        return jsonify({"name":k["app_name"],"client_id":k["_id"],"secret_key":k["secret_key"]})
     else:
         return jsonify({"message":"User dosent exists"})
 @app.route('/app',methods=['POST'])
-@token_required
-def create_app(current_user):
-    if not current_user['admin']:
-        return jsonify({"message":"access-denied"})
+def create_app():
     data=request.get_json()
     new_user=apps(data['name'],data['password'])
     if new_user != False:
@@ -104,7 +107,7 @@ def delete_app(current_user,app_name):
         cursor = db.cursor()
     except:
         return jsonify({"message":"Database denied connection","error":401})
-    db.users.delete_one({"app-name":app_name})    
+    db.users.delete_one({"app_name":app_name})    
     db[app_name].drop()
     return jsonify({"message":"user deleted","status":1})
 @app.route('/login')
@@ -117,13 +120,13 @@ def login():
         cursor = db.cursor()
     except:
         return jsonify({"message":"Database denied connection","error":401})
-    k=db.users.find({"app-name":auth.username})
+    k=db.users.find({"app_name":auth.username})
     if k.count()==1:
         k=k[0]
         temp=auth.password+str(app.config['SECRET_KEY'])
         hash_val=hashlib.sha256(temp.encode())
         if str(hash_val.hexdigest())==k["password"]:
-            token=jwt.encode({'id':k['app-name'],'exp':datetime.datetime.utcnow()+datetime.timedelta(minutes=15)},app.config['SECRET_KEY'])
+            token=jwt.encode({'id':k['app_name'],'exp':datetime.datetime.utcnow()+datetime.timedelta(minutes=15)},app.config['SECRET_KEY'])
             return jsonify({"token":token.decode('UTF-8')})
         else:
             return make_response('Could not verify',401,{'WWW-Authenticate':'Basic realm="Login required"'})
@@ -134,7 +137,7 @@ def login():
 def make_user(current_user,app_name):
     if current_user['admin']:
         return jsonify({"message":"access-denied"})
-    if current_user['app-name']!=app_name:
+    if current_user['app_name']!=app_name:
         return jsonify({"message":"access-denied"})
     data=request.get_json()
     new_user=create_user(app_name,data['name'],data['password'])
@@ -147,7 +150,7 @@ def make_user(current_user,app_name):
 def get(current_user,app_name):
     if current_user['admin']:
         return jsonify({"message":"access-denied"})
-    if current_user['app-name']!=app_name:
+    if current_user['app_name']!=app_name:
         return jsonify({"message":"access-denied"})
     res=getusers(app_name)
     if res==False:
@@ -158,7 +161,7 @@ def get(current_user,app_name):
 def gets(current_user,app_name,user_name):
     if current_user['admin']:
         return jsonify({"message":"access-denied"})
-    if current_user['app-name']!=app_name:
+    if current_user['app_name']!=app_name:
         return jsonify({"message":"access-denied"})
     res=getuser(app_name,user_name)
     if res==False:
@@ -169,7 +172,7 @@ def gets(current_user,app_name,user_name):
 def user_login(current_user,app_name):
     if current_user['admin']:
         return jsonify({"message":"access-denied"})
-    if current_user['app-name']!=app_name:
+    if current_user['app_name']!=app_name:
         return jsonify({"message":"access-denied"})
     data=request.get_json()
     if not data['username'] and not data['password']:
