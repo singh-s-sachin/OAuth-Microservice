@@ -2,7 +2,6 @@ from flask import Flask,request,jsonify, make_response
 import hashlib
 import uuid
 import jwt
-from pymongo import MongoClient
 import mysql.connector
 import json
 import datetime
@@ -62,9 +61,10 @@ def token_required(f):
 @app.route('/app',methods=['GET'])
 @token_required
 def getapps(current_user):
-    if not current_user[0]:
+    if not bool(current_user[0]):
         return jsonify({"message":"access-denied"})
     try:
+        print(current_user[0])
         db=mysql.connector.connect(host='localhost',database='Auth',user='root',password='root')
         cursor = db.cursor()
     except:
@@ -80,7 +80,7 @@ def getapps(current_user):
 @app.route('/app/<app_name>',methods=['GET'])
 @token_required
 def getapp(current_user,app_name):
-    if not current_user[0]:
+    if not bool(current_user[0]):
         return jsonify({"message":"access-denied"})
     try:
         db=mysql.connector.connect(host='localhost',database='Auth',user='root',password='root')
@@ -98,7 +98,7 @@ def getapp(current_user,app_name):
 @app.route('/app',methods=['POST'])
 @token_required
 def create_app(current_user):
-    if not current_user[0]:
+    if not bool(current_user[0]):
         return jsonify({"message":"access-denied"})
     data=request.get_json()
     new_user=apps(data['name'],data['password'])
@@ -109,7 +109,7 @@ def create_app(current_user):
 @app.route('/app/<app_name>',methods=['DELETE'])
 @token_required
 def delete_app(current_user,app_name):
-    if not current_user[0]:
+    if not bool(current_user[0]):
         return jsonify({"message":"access-denied"})
     try:
         db=mysql.connector.connect(host='localhost',database='Auth',user='root',password='root')
