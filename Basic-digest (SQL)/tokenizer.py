@@ -61,10 +61,9 @@ def token_required(f):
 @app.route('/app',methods=['GET'])
 @token_required
 def getapps(current_user):
-    if not bool(current_user[0]):
+    if int(current_user[0])==0:
         return jsonify({"message":"access-denied"})
     try:
-        print(current_user[0])
         db=mysql.connector.connect(host='localhost',database='Auth',user='root',password='root')
         cursor = db.cursor()
     except:
@@ -80,7 +79,7 @@ def getapps(current_user):
 @app.route('/app/<app_name>',methods=['GET'])
 @token_required
 def getapp(current_user,app_name):
-    if not bool(current_user[0]):
+    if int(current_user[0])==0:
         return jsonify({"message":"access-denied"})
     try:
         db=mysql.connector.connect(host='localhost',database='Auth',user='root',password='root')
@@ -98,7 +97,7 @@ def getapp(current_user,app_name):
 @app.route('/app',methods=['POST'])
 @token_required
 def create_app(current_user):
-    if not bool(current_user[0]):
+    if int(current_user[0])==0:
         return jsonify({"message":"access-denied"})
     data=request.get_json()
     new_user=apps(data['name'],data['password'])
@@ -109,7 +108,7 @@ def create_app(current_user):
 @app.route('/app/<app_name>',methods=['DELETE'])
 @token_required
 def delete_app(current_user,app_name):
-    if not bool(current_user[0]):
+    if int(current_user[0])==0:
         return jsonify({"message":"access-denied"})
     try:
         db=mysql.connector.connect(host='localhost',database='Auth',user='root',password='root')
@@ -156,7 +155,7 @@ def login():
 @app.route('/<app_name>/register',methods=['POST'])
 @token_required
 def make_user(current_user,app_name):
-    if current_user['admin']:
+    if int(current_user[0])==1:
         return jsonify({"message":"access-denied"})
     if current_user['app_name']!=app_name:
         return jsonify({"message":"access-denied"})
@@ -169,7 +168,7 @@ def make_user(current_user,app_name):
 @app.route('/<app_name>/users',methods=['GET'])
 @token_required
 def get(current_user,app_name):
-    if current_user['admin']:
+    if int(current_user[0])==1:
         return jsonify({"message":"access-denied"})
     if current_user['app_name']!=app_name:
         return jsonify({"message":"access-denied"})
@@ -180,7 +179,7 @@ def get(current_user,app_name):
 @app.route('/<app_name>/users/<user_name>',methods=['GET'])
 @token_required
 def gets(current_user,app_name,user_name):
-    if current_user['admin']:
+    if int(current_user[0])==1:
         return jsonify({"message":"access-denied"})
     if current_user['app_name']!=app_name:
         return jsonify({"message":"access-denied"})
@@ -191,7 +190,7 @@ def gets(current_user,app_name,user_name):
 @app.route('/<app_name>/login',methods=['GET'])
 @token_required
 def user_login(current_user,app_name):
-    if current_user['admin']:
+    if int(current_user[0])==1:
         return jsonify({"message":"access-denied"})
     if current_user['app_name']!=app_name:
         return jsonify({"message":"access-denied"})

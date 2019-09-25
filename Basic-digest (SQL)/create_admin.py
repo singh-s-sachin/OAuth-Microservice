@@ -16,4 +16,7 @@ while True:
     pwd=hashlib.sha256(temp.encode())
     pid=str(uuid.uuid4())
     cursor.execute('insert into users(_id,secret_key,app_name,password,admin)values("{0}","{1}","{2}","{3}",True)'.format(pid,"Null",username,str(pwd.hexdigest())))
+    db.commit()
+    cursor.close()
+    cursor.close()
     break
