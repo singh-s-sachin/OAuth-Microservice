@@ -51,8 +51,10 @@ def token_required(f):
             cursor = db.cursor()
         except:
             return jsonify({"message":"Database denied connection","error":401})
-        k=db.users.find({"app_name":data['id']})
-        if k.count()==0:
+        command='select admin from users where app_name="{0}"'.format(data['id'])
+        cursor.execute(command)
+        k=cursor.fetchall()
+        if len(k)==0:
             return jsonify({"message":"User dosent exists","status":0})
         current_user=k[0]
         return f(current_user,*args,**kwargs)
@@ -60,37 +62,44 @@ def token_required(f):
 @app.route('/app',methods=['GET'])
 @token_required
 def getapps(current_user):
-    if not current_user['admin']:
+    if not current_user[0]:
         return jsonify({"message":"access-denied"})
     try:
         db=mysql.connector.connect(host='localhost',database='Auth',user='root',password='root')
         cursor = db.cursor()
     except:
         return jsonify({"message":"Database denied connection","error":401})
-    k=db.users.find()
+    command="select app_name,_id,secret_key from users"
+    cursor.execute(command)
+    k=cursor.fetchall()
     l=[]
     for i in k:
-        dic={"name":i["app_name"],"client_id":i["_id"],"secret_key":i["secret_key"]}
+        dic={"name":i[0],"client_id":i[1],"secret_key":i[2]}
         l.append(dic)
     return json.dumps(l)
 @app.route('/app/<app_name>',methods=['GET'])
 @token_required
 def getapp(current_user,app_name):
-    if not current_user['admin']:
+    if not current_user[0]:
         return jsonify({"message":"access-denied"})
     try:
         db=mysql.connector.connect(host='localhost',database='Auth',user='root',password='root')
         cursor = db.cursor()
     except:
         return jsonify({"message":"Database denied connection","error":401})
-    k=db.users.find({"app_name":app_name})
-    if k.count()==1:
+    command='select app_name,_id,secret_key from users where app_name="{0}"'.format(app_name)
+    cursor.execute(command)
+    k=cursor.fetchall()
+    if len(k)==1:
         k=k[0]
-        return jsonify({"name":k["app_name"],"client_id":k["_id"],"secret_key":k["secret_key"]})
+        return jsonify({"name":k[0],"client_id":k[1],"secret_key":k[2]})
     else:
         return jsonify({"message":"User dosent exists"})
 @app.route('/app',methods=['POST'])
-def create_app():
+@token_required
+def create_app(current_user):
+    if not current_user[0]:
+        return jsonify({"message":"access-denied"})
     data=request.get_json()
     new_user=apps(data['name'],data['password'])
     if new_user != False:
@@ -100,17 +109,27 @@ def create_app():
 @app.route('/app/<app_name>',methods=['DELETE'])
 @token_required
 def delete_app(current_user,app_name):
-    if not current_user['admin']:
+    if not current_user[0]:
         return jsonify({"message":"access-denied"})
     try:
         db=mysql.connector.connect(host='localhost',database='Auth',user='root',password='root')
         cursor = db.cursor()
     except:
         return jsonify({"message":"Database denied connection","error":401})
-    db.users.delete_one({"app_name":app_name})    
-    db[app_name].drop()
-    return jsonify({"message":"user deleted","status":1})
-@app.route('/login')
+    command='select app_name from users where app_name="{0}"'.format(app_name)
+    cursor.execute(command)
+    k=cursor.fetchall()
+    if len(k)==0:
+        return jsonify({"message":"User dosen't exists","success":"false"})
+    command='delete from users where app_name="{0}"'.format(app_name)
+    cursor.execute(command)
+    command='Drop database {0}'.format(app_name)
+    cursor.execute(command)
+    db.commit()
+    cursor.close()
+    cursor.close()
+    return jsonify({"message":"Deleted","success":"true"})
+@app.route('/login',methods=['GET'])
 def login():
     auth=request.authorization
     if not auth or not auth.username or not auth.password:
@@ -120,13 +139,15 @@ def login():
         cursor = db.cursor()
     except:
         return jsonify({"message":"Database denied connection","error":401})
-    k=db.users.find({"app_name":auth.username})
-    if k.count()==1:
+    command='select app_name,password from users where app_name="{0}"'.format(auth.username)
+    cursor.execute(command)
+    k=cursor.fetchall()
+    if len(k)==1:
         k=k[0]
         temp=auth.password+str(app.config['SECRET_KEY'])
         hash_val=hashlib.sha256(temp.encode())
-        if str(hash_val.hexdigest())==k["password"]:
-            token=jwt.encode({'id':k['app_name'],'exp':datetime.datetime.utcnow()+datetime.timedelta(minutes=15)},app.config['SECRET_KEY'])
+        if str(hash_val.hexdigest())==k[1]:
+            token=jwt.encode({'id':k[0],'exp':datetime.datetime.utcnow()+datetime.timedelta(minutes=15)},app.config['SECRET_KEY'])
             return jsonify({"token":token.decode('UTF-8')})
         else:
             return make_response('Could not verify',401,{'WWW-Authenticate':'Basic realm="Login required"'})
